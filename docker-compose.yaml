@@ -1,0 +1,14 @@
+version: "3"
+
+services:
+  goredis:
+    container_name: "goredis"
+    restart: always
+    build:
+      context: .
+    environment:
+      - BIND_PORT=8090
+      - LOG_LEVEL=debug
+    ports:
+      - "8090:8090"
+
