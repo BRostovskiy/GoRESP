@@ -1,4 +1,4 @@
-# GoRedis(by `Boris Rostovskiy`)
+# GoRESP(by `Boris Rostovskiy`)
 
 ## Simple implementation `redis` server for testing purposes
 Tested in combination with clients:
