@@ -12,17 +12,35 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func main() {
-	log := logrus.New()
+func initLogger(level string) *logrus.Logger {
+	l := logrus.New()
 
+	switch strings.ToLower(level) {
+	case "debug":
+		l.Level = logrus.DebugLevel
+	case "error":
+		l.Level = logrus.ErrorLevel
+	case "warn":
+		l.Level = logrus.WarnLevel
+	default:
+		l.Level = logrus.InfoLevel
+	}
+
+	return l
+}
+
+func main() {
 	var bindAddr string
 	var bindPort int
 	var keyVal string
 	var getOnly bool
+	var logLevel string
+
 	flags := flag.NewFlagSet("GoRedis", flag.ContinueOnError)
 	flags.StringVar(&bindAddr, "bind_addr", "", "bind_addr=<IP>")
-	flags.IntVar(&bindPort, "bind_port", 8090, "bind_port=<INT>")
-
+	flags.IntVar(&bindPort, "bind_port", 6379, "bind_port=<INT>") //8090, "bind_port=<INT>")
+	flags.StringVar(&logLevel, "log-level", "debug",
+		"Log level. Available options: debug, info, warn, error")
 	flags.StringVar(&keyVal, "key_val", "", "key_value=key:val to set. empty string is allowed")
 	flags.BoolVar(&getOnly, "get_only", false, "get_only=true in combination with key_val will only get a value for you")
 
@@ -43,6 +61,7 @@ func main() {
 		}
 	}
 
+	log := initLogger(logLevel)
 	conn, err := redis.Dial("tcp", fmt.Sprintf("%s:%d", bindAddr, bindPort))
 	if err != nil {
 		log.Fatal(err)
@@ -56,7 +75,7 @@ func main() {
 	if !getOnly {
 
 		key = "key"
-		val := "mu_super_long_value"
+		val := "my_super_long_value"
 
 		// 3 symbols is minimum: a:b is correct
 		if keyVal != "" && len(keyVal) >= 3 {
@@ -66,7 +85,7 @@ func main() {
 			}
 		}
 
-		log.Printf("SET: %s:%s\n", key, val)
+		log.Debugf("SET: %s:%s\n", key, val)
 		_, err = conn.Do("SET", key, val)
 		if err != nil {
 			log.Fatal(err)
@@ -78,5 +97,5 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("RESPONSE: %v\n", reply)
+	log.Debugf("RESPONSE: %v\n", reply)
 }

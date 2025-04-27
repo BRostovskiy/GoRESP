@@ -3,13 +3,13 @@ FROM --platform=linux/arm64 golang:1.21-alpine as builder
 WORKDIR /opt
 COPY . .
 
-RUN go build -o goredis binaries/resp-server/main.go
+RUN go build -o goredis cmd/resp-server/main.go
 
 FROM --platform=linux/arm64 golang:1.21-alpine as builder2
 
 WORKDIR /opt
 
-COPY binaries/client/main.go .
+COPY cmd/client/main.go .
 COPY go.mod .
 COPY go.sum .
 

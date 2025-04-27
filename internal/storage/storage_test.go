@@ -1,4 +1,4 @@
-package repo
+package storage
 
 import (
 	"context"
@@ -13,8 +13,8 @@ func TestInMemoryStorage_GetSet(t *testing.T) {
 	t.Parallel()
 	l := logrus.New()
 
-	storage := NewInMemoryStorage(l)
-	storage.Start(context.Background())
+	storage := NewInMemory(l)
+	storage.Run(context.Background())
 	storage.data = map[string]interface{}{"hello": "world"}
 	defer t.Cleanup(func() {
 		storage.Done()
@@ -51,10 +51,10 @@ func TestInMemoryStorage_GetSet(t *testing.T) {
 			t.Parallel()
 
 			if tc.val != "" {
-				err := storage.Set(tc.key, tc.val)
+				err := storage.Set(context.Background(), tc.key, tc.val)
 				assert.NoError(t, err)
 			}
-			got, err := storage.Get(tc.key)
+			got, err := storage.Get(context.Background(), tc.key)
 			if tc.wantErr != nil {
 				assert.Error(t, err, tc.wantErr)
 			} else {

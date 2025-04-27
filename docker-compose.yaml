@@ -7,8 +7,8 @@ services:
     build:
       context: .
     environment:
-      - BIND_PORT=8090
+      - BIND_PORT=6379
       - LOG_LEVEL=debug
     ports:
-      - "8090:8090"
+      - "6379:6379"
 

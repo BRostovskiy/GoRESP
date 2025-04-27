@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	"goredis/internal/repo"
 	"goredis/internal/server"
+	"goredis/internal/storage"
 
 	"github.com/namsral/flag"
 	"github.com/sirupsen/logrus"
@@ -25,21 +25,7 @@ type config struct {
 	LogLevel string
 }
 
-func startTCP(cfg *config, storage repo.KVStorage, logger *logrus.Logger) *server.TCP {
-	h := server.NewCommandServerTCP(storage, logger)
-
-	go func() {
-		err := h.ListenAndServe(fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.BindPort))
-		if err != nil {
-			log.Fatalf("%v", err)
-			return
-		}
-	}()
-
-	return h
-}
-
-func waitForShutdown(log *logrus.Logger, storage repo.KVStorage, h *server.TCP) {
+func waitForShutdown(log *logrus.Logger, storage runAndDone, h *server.TCP) {
 	term := make(chan os.Signal, 1)
 	signal.Notify(term, syscall.SIGTERM, syscall.SIGINT)
 	select {
@@ -68,7 +54,7 @@ func initLogger(level string) *logrus.Logger {
 	return l
 }
 
-func main() {
+func parseFlags() config {
 	var cfg config
 	flags := flag.NewFlagSet("GoRedis", flag.ContinueOnError)
 	flags.StringVar(&cfg.LogLevel, "log-level", "info",
@@ -91,12 +77,33 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	return cfg
+}
+
+type runAndDone interface {
+	Run(ctx context.Context)
+	Done()
+}
+
+func run(cfg config, storage runAndDone, handler *server.TCP) {
+	storage.Run(context.Background())
+	go func() {
+		err := handler.ListenAndServe(fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.BindPort))
+		if err != nil {
+			log.Fatalf("%v", err)
+			return
+		}
+	}()
+}
+
+func main() {
+
+	cfg := parseFlags()
 
 	logger := initLogger(cfg.LogLevel)
 
-	s := repo.NewInMemoryStorage(logger)
-	s.Start(context.Background())
-	h := startTCP(&cfg, s, logger)
-
-	waitForShutdown(logger, s, h)
+	s := storage.NewInMemory(logger)
+	handler := server.NewTCP(s, logger)
+	run(cfg, s, handler)
+	waitForShutdown(logger, s, handler)
 }

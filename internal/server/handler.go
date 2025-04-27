@@ -1,19 +1,17 @@
-package handler
+package server
 
 import (
+	"context"
 	"fmt"
 
 	"goredis/internal/reader"
-	"goredis/internal/repo"
 )
 
 const (
 	// StopWord if client want to break the connection he basically needs to send this word
-	getCmd     = "GET"
-	setCmd     = "SET"
-	stopCmd    = "QUIT"
-	clientCmd  = "CLIENT"
-	commandCmd = "COMMAND"
+	getCmd  = "GET"
+	setCmd  = "SET"
+	stopCmd = "QUIT"
 )
 
 var (
@@ -22,7 +20,7 @@ var (
 	IncorrectArgsLengthError    = fmt.Errorf("incorrect number of argumens")
 )
 
-func Get(storage repo.KVStorage, args ...interface{}) (interface{}, error) {
+func get(ctx context.Context, storage Storage, args ...interface{}) (interface{}, error) {
 	if len(args) != 1 {
 		return nil, IncorrectArgsLengthError
 	}
@@ -30,10 +28,10 @@ func Get(storage repo.KVStorage, args ...interface{}) (interface{}, error) {
 	if !ok {
 		return nil, fmt.Errorf("could not convert %v to string", args[0])
 	}
-	return storage.Get(key)
+	return storage.Get(ctx, key)
 }
 
-func Set(storage repo.KVStorage, args ...interface{}) (interface{}, error) {
+func set(ctx context.Context, storage Storage, args ...interface{}) (interface{}, error) {
 	if len(args) != 2 {
 		return nil, IncorrectArgsLengthError
 	}
@@ -41,17 +39,17 @@ func Set(storage repo.KVStorage, args ...interface{}) (interface{}, error) {
 	if !ok {
 		return nil, fmt.Errorf("could not convert %v to string", args[0])
 	}
-	return nil, storage.Set(key, args[1])
+	return nil, storage.Set(ctx, key, args[1])
 }
 
-func dummy(_ repo.KVStorage, _ ...interface{}) (interface{}, error) {
+func quit(ctx context.Context, _ Storage, _ ...interface{}) (interface{}, error) {
 	return nil, nil
 }
 
 type Handler struct {
 	name    string
 	args    []interface{}
-	Execute func(storage repo.KVStorage, args ...interface{}) (interface{}, error)
+	Execute func(ctx context.Context, storage Storage, args ...interface{}) (interface{}, error)
 }
 
 func (h Handler) Args() []interface{} {
@@ -62,14 +60,14 @@ func (h Handler) IsStop() bool {
 	return h.name == stopCmd
 }
 
-func FromValue(v reader.Value) (*Handler, error) {
+func NewHandlerFromValue(v reader.Value) (*Handler, error) {
 	if v.IsArray() {
 		array, ok := v.AsArray()
 		if !ok {
 			return nil, RootValueIsNotAnArrayError
 		}
 
-		cmdName, ok := array[0].AsString()
+		cmdName, ok := array[0].String()
 		if !ok {
 			return nil, CouldNotGetHandlerNameError
 		}
@@ -86,13 +84,13 @@ func FromValue(v reader.Value) (*Handler, error) {
 		switch cmdName {
 		case getCmd:
 			cmd.name = getCmd
-			cmd.Execute = Get
+			cmd.Execute = get
 		case setCmd:
 			cmd.name = setCmd
-			cmd.Execute = Set
-		case stopCmd, commandCmd, clientCmd:
+			cmd.Execute = set
+		case stopCmd:
 			cmd.name = cmdName
-			cmd.Execute = dummy
+			cmd.Execute = quit
 		default:
 			return nil, fmt.Errorf("unsupported command: '%s' (use uppercase instead)", cmdName)
 		}

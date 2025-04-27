@@ -11,7 +11,7 @@ import (
 
 func getScanner(r io.Reader) *bufio.Scanner {
 	scanner := bufio.NewScanner(r)
-	scanner.Split(respSplitter)
+	scanner.Split(splitter)
 	return scanner
 }
 
@@ -39,7 +39,7 @@ func TestRESP_readLine(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &RESPReader{
+			r := &RESP{
 				Scanner: tt.fields.Scanner,
 			}
 			got, err := r.readLine()
@@ -107,7 +107,7 @@ func TestRESP_Read(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &RESPReader{
+			r := &RESP{
 				Scanner: tt.fields.Scanner,
 			}
 			got, err := r.Read()

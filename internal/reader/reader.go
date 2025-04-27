@@ -26,7 +26,7 @@ const (
 	hrError   = "err"
 )
 
-func respSplitter(data []byte, atEOF bool) (advance int, token []byte, err error) {
+func splitter(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	if atEOF && len(data) == 0 {
 		return 0, nil, nil
 	}
@@ -56,7 +56,7 @@ func (v *Value) IsArray() bool {
 	return v.name == hrArray
 }
 
-func (v *Value) AsString() (string, bool) {
+func (v *Value) String() (string, bool) {
 	result, ok := v.content.(string)
 	return result, ok
 }
@@ -65,17 +65,17 @@ func (v *Value) Content() interface{} {
 	return v.content
 }
 
-type RESPReader struct {
+type RESP struct {
 	*bufio.Scanner
 }
 
-func NewRESPReader(reader io.Reader) *RESPReader {
-	scanner := bufio.NewScanner(reader)
-	scanner.Split(respSplitter)
-	return &RESPReader{scanner}
+func NewRESP(reader io.Reader) *RESP {
+	r := RESP{Scanner: bufio.NewScanner(reader)}
+	r.Split(splitter)
+	return &r
 }
 
-func (r *RESPReader) Read() (Value, error) {
+func (r *RESP) Read() (Value, error) {
 	line, err := r.readLine()
 	if err != nil {
 		return Value{}, err
@@ -119,7 +119,7 @@ func (r *RESPReader) Read() (Value, error) {
 	}
 }
 
-func (r *RESPReader) toInteger(byteInt []byte) (int, error) {
+func (r *RESP) toInteger(byteInt []byte) (int, error) {
 	i64, err := strconv.ParseInt(string(byteInt), 10, 64)
 	if err != nil {
 		return 0, fmt.Errorf("could not convert to integer: %w", err)
@@ -127,7 +127,7 @@ func (r *RESPReader) toInteger(byteInt []byte) (int, error) {
 	return int(i64), nil
 }
 
-func (r *RESPReader) readLine() ([]byte, error) {
+func (r *RESP) readLine() ([]byte, error) {
 	if r.Scan() {
 		line := r.Text()
 		return []byte(line), nil
@@ -135,7 +135,7 @@ func (r *RESPReader) readLine() ([]byte, error) {
 	return nil, io.EOF
 }
 
-func (r *RESPReader) readArray(l int) (Value, error) {
+func (r *RESP) readArray(l int) (Value, error) {
 	v := Value{
 		name: hrArray,
 	}
@@ -154,7 +154,7 @@ func (r *RESPReader) readArray(l int) (Value, error) {
 	return v, nil
 }
 
-func (r *RESPReader) readBulk(length int) (Value, error) {
+func (r *RESP) readBulk(length int) (Value, error) {
 	v := Value{
 		name: hrBulk,
 	}
